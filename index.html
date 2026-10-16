@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>공간디자인 대학원 시간표 + 조교 배정</title>
+<style>
+  :root{
+    --bg:#0f1115; --panel:#171a21; --line:#262b35; --txt:#e8eaf0; --dim:#8b93a3;
+    --a:#6ea8fe; --b:#7bd88f; --c:#f5c26b; --d:#c792ea; --e:#ff8fa3; --ta:#4dd4c4;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);color:var(--txt);font-family:"Pretendard","Apple SD Gothic Neo",-apple-system,sans-serif;padding:28px;-webkit-font-smoothing:antialiased}
+  h1{font-size:20px;letter-spacing:-.02em;font-weight:700}
+  .sub{color:var(--dim);font-size:13px;margin-top:6px;line-height:1.6}
+  .wrap{display:grid;grid-template-columns:1fr 300px;gap:22px;margin-top:20px;align-items:start}
+  @media(max-width:1100px){.wrap{grid-template-columns:1fr}}
+
+  .modebar{display:flex;gap:8px;margin-top:14px}
+  .mode{background:#1c212b;border:1px solid var(--line);color:var(--dim);padding:8px 14px;border-radius:9px;font-size:12.5px;cursor:pointer;font-weight:600}
+  .mode.on{background:var(--ta);border-color:var(--ta);color:#0f1115}
+  .mode.on.crs{background:var(--a);border-color:var(--a)}
+
+  .board{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:14px 14px 18px}
+  .grid{display:grid;grid-template-columns:52px repeat(5,1fr);position:relative}
+  .dayhead{text-align:center;font-size:13px;font-weight:600;color:var(--dim);padding:8px 0 12px;border-bottom:1px solid var(--line)}
+  .timecol{position:relative}
+  .tick{height:60px;font-size:11px;color:var(--dim);text-align:right;padding-right:8px;transform:translateY(-6px)}
+  .daycol{position:relative;border-left:1px solid var(--line)}
+  .daycol .hline{height:60px;border-bottom:1px dashed rgba(255,255,255,.05)}
+
+  /* 조교 1시간 슬롯 */
+  .slot{position:absolute;left:2px;right:2px;border-radius:6px;z-index:1;cursor:pointer;
+        border:1px dashed rgba(77,212,196,.22);background:rgba(77,212,196,.03);transition:.12s;
+        display:flex;align-items:center;justify-content:center;font-size:10px;color:transparent}
+  .slot:hover{background:rgba(77,212,196,.14);border-color:rgba(77,212,196,.6);color:rgba(77,212,196,.9)}
+  .slot.on{background:rgba(77,212,196,.9);border:1px solid var(--ta);color:#0f1115;font-weight:700;font-size:11px}
+  .slot.blocked{border-color:rgba(255,255,255,.05);background:transparent;cursor:not-allowed;pointer-events:none}
+  .slot.half{font-size:9px}
+
+  .ev{position:absolute;border-radius:8px;padding:7px 8px;font-size:11.5px;line-height:1.3;z-index:2;
+      cursor:pointer;overflow:hidden;border:1px solid transparent;transition:.15s;
+      background:#20242e;color:#6d7482;border-color:#2c3140}
+  .ev.dim{opacity:.35}
+  .ev .t{font-weight:700;font-size:12px;margin-bottom:3px;letter-spacing:-.01em}
+  .ev .m{opacity:.85;font-size:10.5px}
+  .ev.on{color:#0f1115}
+  .ev.on.c0{background:var(--a)} .ev.on.c1{background:var(--b)} .ev.on.c2{background:var(--c)}
+  .ev.on.c3{background:var(--d)} .ev.on.c4{background:var(--e)}
+  .ev.clash{outline:2px solid #ff4d5e;outline-offset:-2px}
+  .ev:hover{filter:brightness(1.15)}
+
+  .side{display:flex;flex-direction:column;gap:14px}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:14px}
+  .card h2{font-size:12px;color:var(--dim);font-weight:600;letter-spacing:.06em;text-transform:uppercase;margin-bottom:10px}
+  .cred{font-size:30px;font-weight:800;letter-spacing:-.03em}
+  .cred span.s{font-size:14px;color:var(--dim);font-weight:500}
+  .bar{height:7px;background:#232833;border-radius:4px;margin-top:10px;overflow:hidden}
+  .bar i{display:block;height:100%;background:var(--ta);width:0;transition:.2s}
+  .bar.full i{background:#7bd88f}
+  .bar.over i{background:#ff4d5e}
+  .tadays{margin-top:10px;font-size:12px;color:var(--dim);line-height:1.8}
+  .tadays b{color:var(--ta)}
+  .li{display:flex;gap:8px;align-items:flex-start;padding:7px 0;border-bottom:1px solid rgba(255,255,255,.04);font-size:12.5px;cursor:pointer}
+  .li:last-child{border:0}
+  .dot{width:8px;height:8px;border-radius:3px;background:#39404e;margin-top:5px;flex:0 0 8px}
+  .li.on .dot{background:var(--a)}
+  .li .n{color:#6d7482}
+  .li.on .n{color:var(--txt);font-weight:600}
+  .li .d{color:var(--dim);font-size:11px}
+  .warn{color:#ff8a94;font-size:12px;line-height:1.6}
+  .btn{background:#232833;border:1px solid var(--line);color:var(--txt);padding:7px 10px;border-radius:8px;font-size:12px;cursor:pointer}
+  .btn:hover{background:#2b3140}
+</style>
+</head>
+<body>
+<h1>공간디자인 대학원 · 수강신청 + 조교 시간 배정</h1>
+<div class="sub">
+  ① <b>과목 담기</b> 모드에서 수업을 고르고 → ② <b>조교 배정</b> 모드로 바꿔 09:00–17:30 사이 빈 칸을 클릭해 주 10시간을 채우세요.<br>
+  수업이 잡힌 시간대는 자동으로 잠깁니다. (1교시=09:00, A=정각·B=30분)
+</div>
+
+<div class="modebar">
+  <button class="mode crs on" id="m0" onclick="setMode(0)">과목 담기</button>
+  <button class="mode" id="m1" onclick="setMode(1)">조교 배정</button>
+</div>
+
+<div class="wrap">
+  <div class="board">
+    <div class="grid" id="grid"></div>
+  </div>
+  <div class="side">
+    <div class="card">
+      <h2>조교 시간</h2>
+      <div class="cred"><span id="tah">0</span><span class="s"> / 10시간</span></div>
+      <div class="bar" id="bar"><i></i></div>
+      <div class="tadays" id="tadays"></div>
+      <div style="margin-top:10px"><button class="btn" onclick="clearTA()">조교 초기화</button></div>
+    </div>
+    <div class="card">
+      <h2>수강</h2>
+      <div class="cred"><span id="cnt">0</span><span class="s">과목 · </span><span id="cr">0</span><span class="s">학점</span></div>
+      <div style="margin-top:10px"><button class="btn" onclick="clearAll()">전체 해제</button></div>
+    </div>
+    <div class="card" id="clashcard" style="display:none">
+      <h2>충돌</h2>
+      <div class="warn" id="clashlist"></div>
+    </div>
+    <div class="card">
+      <h2>전체 과목</h2>
+      <div id="list"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+const DAYS=['월','화','수','목','금'];
+const START=9, END=21;
+const C=[
+ {id:1,n:'크리에이티브스페이스스튜디오1',p:'윤성호',d:'금',s:2,e:4,r:'별관3층 14호',k:'스튜디오'},
+ {id:2,n:'뉴미디어환경디자인스튜디오1',p:'남궁기찬',d:'월',s:6,e:8,r:'별관3층 14호',k:'스튜디오'},
+ {id:3,n:'융합실내디자인스튜디오1',p:'강민선',d:'금',s:6,e:8,r:'별관3층 2호',k:'스튜디오'},
+ {id:4,n:'문화현장리서치',p:'이상해',d:'금',s:5,e:7,r:'별관3층 3호',k:'전공'},
+ {id:5,n:'디지털공간디자인1',p:'민세희',d:'수',s:6,e:8,r:'별관3층 9호',k:'스튜디오'},
+ {id:6,n:'융합공간디자인세미나',p:'이지성',d:'수',s:10,e:12,r:'별관3층 2호',k:'전공'},
+ {id:7,n:'인터렉티브 환경디자인 스튜디오1',p:'이지성',d:'금',s:2,e:4,r:'별관3층 2호',k:'스튜디오'},
+ {id:8,n:'공간디자인스튜디오2',p:'최경란',d:'화',s:5,e:7,r:'별관3층 5호',k:'스튜디오'},
+ {id:9,n:'공간이슈디자인세미나 I',p:'김상규',d:'목',s:2,e:4,r:'조형관2층 7호',k:'전공'},
+ {id:10,n:'친환경 공간디자인세미나',p:'정미선',d:'화',s:6,e:8,r:'조형관2층 7호',k:'전공'},
+ {id:11,n:'지속가능 디자인 스튜디오 II',p:'최경란',d:'화',s:2,e:4,r:'조형관2층 7호',k:'전공'},
+ {id:12,n:'AI와 공간디자인 스튜디오 II',p:'이지성',d:'수',s:7,e:9,r:'조형관2층 7호',k:'전공'},
+ {id:13,n:'일반공간이론 세미나 II',p:'김지은',d:'목',s:6,e:8,r:'조형관2층 7호',k:'전공'},
+ {id:14,n:'AI 공간디자인 / 디지털 폼 아키텍쳐',p:'김동헌',d:'화',s:10,e:12,r:'조형관2층 12-2호',k:'전공선택·야'},
+ {id:15,n:'공간디자인의역사 / 공간이론과비평',p:'김개천',d:'화',s:10,e:12,r:'조형관2층 7호',k:'전공선택·야'},
+ {id:16,n:'어드밴스드 인테리어 디자인 스튜디오',p:'윤성호',d:'목',s:10,e:12,r:'별관3층 14호',k:'전공선택·야'},
+ {id:17,n:'실내디자인I, 연구방향리서치',p:'김상호',d:'금',s:10,e:12,r:'조형관2층 12-2호',k:'전공선택·야'},
+];
+C.forEach(c=>{c.h1=8+c.s; c.h2=8+c.e+1;});
+
+// 조교 슬롯: 09:00~17:00 1시간 8칸 + 17:00~17:30 반칸
+const SLOTS=[]; for(let h=9;h<17;h++) SLOTS.push({h1:h,h2:h+1,len:1});
+SLOTS.push({h1:17,h2:17.5,len:.5});
+
+const sel=new Set(), ta=new Set();
+let mode=0;
+
+function setMode(m){
+  mode=m;
+  document.getElementById('m0').classList.toggle('on',m===0);
+  document.getElementById('m1').classList.toggle('on',m===1);
+  render();
+}
+
+function build(){
+  const g=document.getElementById('grid');
+  g.innerHTML='<div></div>'+DAYS.map(d=>`<div class="dayhead">${d}</div>`).join('');
+  const tc=document.createElement('div'); tc.className='timecol';
+  for(let h=START;h<END;h++) tc.innerHTML+=`<div class="tick">${h}:00</div>`;
+  g.appendChild(tc);
+  DAYS.forEach(d=>{
+    const col=document.createElement('div'); col.className='daycol'; col.id='d'+d;
+    for(let h=START;h<END;h++) col.innerHTML+='<div class="hline"></div>';
+    g.appendChild(col);
+  });
+  // 슬롯
+  DAYS.forEach(d=>{
+    SLOTS.forEach(s=>{
+      const el=document.createElement('div');
+      el.className='slot'+(s.len<1?' half':'');
+      el.dataset.key=d+'|'+s.h1;
+      el.style.top=((s.h1-START)*60+2)+'px';
+      el.style.height=(s.len*60-4)+'px';
+      el.textContent=fmt(s.h1)+'–'+fmt(s.h2);
+      el.onclick=()=>toggleTA(d+'|'+s.h1);
+      document.getElementById('d'+d).appendChild(el);
+    });
+  });
+  // 과목
+  DAYS.forEach(d=>{
+    const list=C.filter(c=>c.d===d).sort((a,b)=>a.h1-b.h1);
+    const lanes=[];
+    list.forEach(c=>{let i=0;while(lanes[i]!==undefined&&lanes[i]>c.h1)i++;c.lane=i;lanes[i]=c.h2;});
+    const total=Math.max(1,...list.map(c=>c.lane+1));
+    list.forEach(c=>{
+      const el=document.createElement('div');
+      el.className='ev c'+(c.id%5); el.dataset.id=c.id;
+      el.style.top=((c.h1-START)*60+2)+'px';
+      el.style.height=((c.h2-c.h1)*60-5)+'px';
+      el.style.left=`calc(${c.lane/total*100}% + 3px)`;
+      el.style.width=`calc(${100/total}% - 6px)`;
+      el.innerHTML=`<div class="t">${c.n}</div><div class="m">${c.p} · ${c.h1}:00–${c.h2}:00<br>${c.r}</div>`;
+      el.onclick=()=>toggle(c.id);
+      document.getElementById('d'+d).appendChild(el);
+    });
+  });
+  document.getElementById('list').innerHTML=C.map(c=>`<div class="li" data-id="${c.id}" onclick="toggle(${c.id})">
+    <div class="dot"></div><div><div class="n">${c.n}</div>
+    <div class="d">${c.p} · ${c.d} ${c.h1}:00–${c.h2}:00 · ${c.k}</div></div></div>`).join('');
+}
+function fmt(h){const H=Math.floor(h),M=(h%1)?'30':'00';return H+':'+M;}
+function toggle(id){ sel.has(id)?sel.delete(id):sel.add(id); render(); }
+function toggleTA(k){ ta.has(k)?ta.delete(k):ta.add(k); render(); }
+function clearAll(){ sel.clear(); render(); }
+function clearTA(){ ta.clear(); render(); }
+
+function render(){
+  const chosen=C.filter(c=>sel.has(c.id));
+  // 충돌
+  const clash=new Set(), pairs=[];
+  for(let i=0;i<chosen.length;i++)for(let j=i+1;j<chosen.length;j++){
+    const a=chosen[i],b=chosen[j];
+    if(a.d===b.d&&a.h1<b.h2&&b.h1<a.h2){clash.add(a.id);clash.add(b.id);pairs.push([a,b]);}
+  }
+  document.querySelectorAll('.ev').forEach(el=>{
+    const id=+el.dataset.id;
+    el.classList.toggle('on',sel.has(id));
+    el.classList.toggle('clash',clash.has(id));
+    el.classList.toggle('dim',mode===1&&!sel.has(id));
+    el.style.pointerEvents=mode===1?'none':'auto';
+  });
+  // 슬롯 잠금
+  document.querySelectorAll('.slot').forEach(el=>{
+    const [d,h1]=el.dataset.key.split('|'); const H=+h1;
+    const s=SLOTS.find(x=>x.h1===H);
+    const busy=chosen.some(c=>c.d===d&&c.h1<s.h2&&H<c.h2);
+    if(busy&&ta.has(el.dataset.key)) ta.delete(el.dataset.key);
+    el.classList.toggle('blocked',busy);
+    el.classList.toggle('on',ta.has(el.dataset.key));
+    el.style.display=mode===1?'flex':(ta.has(el.dataset.key)?'flex':'none');
+    if(mode===0){el.style.pointerEvents='none';el.style.opacity=.85;}
+    else{el.style.pointerEvents='';el.style.opacity=1;}
+  });
+  // 카운트
+  let hrs=0; const byDay={};
+  ta.forEach(k=>{const [d,h1]=k.split('|');const s=SLOTS.find(x=>x.h1===+h1);hrs+=s.len;byDay[d]=(byDay[d]||0)+s.len;});
+  document.getElementById('tah').textContent=hrs;
+  const bar=document.getElementById('bar');
+  bar.className='bar'+(hrs===10?' full':hrs>10?' over':'');
+  bar.querySelector('i').style.width=Math.min(100,hrs/10*100)+'%';
+  document.getElementById('tadays').innerHTML=
+    (hrs===0?'<span style="color:#8b93a3">빈 칸을 클릭해 배정하세요</span>':
+     DAYS.filter(d=>byDay[d]).map(d=>`${d} <b>${byDay[d]}h</b>`).join(' · '))
+    + (hrs>10?'<div style="color:#ff4d5e;margin-top:4px">10시간을 초과했습니다</div>':'')
+    + (hrs>0&&hrs<10?`<div style="margin-top:4px">${10-hrs}시간 남음</div>`:'');
+  document.getElementById('cnt').textContent=chosen.length;
+  document.getElementById('cr').textContent=chosen.length*3;
+  document.querySelectorAll('.li').forEach(el=>el.classList.toggle('on',sel.has(+el.dataset.id)));
+  const cc=document.getElementById('clashcard');
+  cc.style.display=pairs.length?'block':'none';
+  document.getElementById('clashlist').innerHTML=pairs.map(([a,b])=>
+    `<div style="margin-bottom:6px"><b>${a.d}</b> ${a.n} ↔ ${b.n}</div>`).join('');
+}
+build(); render();
+</script>
+</body>
+</html>
